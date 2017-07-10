@@ -1,0 +1,34 @@
+<?php
+
+/**
+ * @file
+ *   Integrates the Paver jQuery library into Drupal.
+ */
+
+/**
+ * Returns the path to the plupload library.
+ */
+function _paver_library_path() {
+  return variable_get('paver_library_path', module_exists('libraries') ? libraries_get_path('paver') : 'sites/all/libraries/paver');
+}
+
+/**
+ * Implements hook_library().
+ */
+function paver_library() {
+  $library_path = _paver_library_path();
+  $module_path = drupal_get_path('module', 'paver');
+  $libraries['plupload']['js'][$module_path . '/js/i18n.js'] = array('scope' => 'footer');
+  $libraries['paver'] = array(
+    'title' => 'Paver',
+    'website' => 'http://terrymun.github.io/paver/demo/index.html',
+    'version' => '1.3.0',
+    'js' => array(
+      $library_path . '/js/jquery.paver.min.js' => array(),
+      $module_path . '/js/paver.js' => array('scope' => 'footer'),
+    ),
+  );
+
+  return $libraries;
+}
+

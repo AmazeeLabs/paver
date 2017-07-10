@@ -1,0 +1,5 @@
+name = Paver
+description = Integrates the Paver jQuery library into Drupal.
+core = 7.x
+
+dependencies[] = jquery_update
