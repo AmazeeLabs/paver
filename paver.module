@@ -240,6 +240,7 @@ function paver_field_formatter_settings_form($field, $instance, $view_mode, $for
     '#title' => t('Paver settings group'),
     '#options' => $options,
     '#default_value' => $settings['paver_settings_group'],
+    '#description' => t('Choose a paver settings group. To edit the current ones or define a new one, go to the !paver_admin_link.', array('!paver_admin_link' => l(t('Paver admin page'), 'admin/config/media/paver'))),
   );
 
   return $element;
