@@ -6,10 +6,17 @@
  */
 
 /**
- * Returns the path to the plupload library.
+ * Returns the path to the paver library.
  */
 function _paver_library_path() {
   return variable_get('paver_library_path', module_exists('libraries') ? libraries_get_path('paver') : 'sites/all/libraries/paver');
+}
+
+/**
+ * Returns the path to the jQuery throttle library.
+ */
+function _paver_throttle_library_path() {
+  return variable_get('paver_jquery_throttle_library_path', module_exists('libraries') ? libraries_get_path('jquery_throttle') : 'sites/all/libraries/jquery_throttle');
 }
 
 /**
@@ -17,8 +24,16 @@ function _paver_library_path() {
  */
 function paver_library() {
   $library_path = _paver_library_path();
+  $jquery_throttle_path = _paver_throttle_library_path();
   $module_path = drupal_get_path('module', 'paver');
-  $libraries['plupload']['js'][$module_path . '/js/i18n.js'] = array('scope' => 'footer');
+  $libraries['jquery_throttle'] = array(
+    'title' => 'jQuery Throttle',
+    'website' => 'http://benalman.com/projects/jquery-throttle-debounce-plugin/',
+    'version' => '1.1',
+    'js' => array(
+      $jquery_throttle_path . '/jquery.ba-throttle-debounce.min.js' => array(),
+    ),
+  );
   $libraries['paver'] = array(
     'title' => 'Paver',
     'website' => 'http://terrymun.github.io/paver/demo/index.html',
@@ -27,8 +42,278 @@ function paver_library() {
       $library_path . '/js/jquery.paver.min.js' => array(),
       $module_path . '/js/paver.js' => array('scope' => 'footer'),
     ),
+    'css' => array(
+      $library_path . '/css/paver.min.css' => array(),
+    ),
+    'dependencies' => array(
+      array('paver', 'jquery_throttle'),
+    ),
   );
 
   return $libraries;
 }
 
+/**
+ * Implements hook_permission().
+ */
+function paver_permission() {
+  return array(
+    'administer paver' => array(
+      'title' => t('Administer Paver settings'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function paver_menu() {
+  $items['admin/config/media/paver'] = array(
+    'title' => 'Paver',
+    'access arguments' => array('administer paver'),
+    'description' => 'Configure the Paver settings. Here you can edit the current setting groups or add new ones.',
+    'page callback' => 'paver_admin_groups',
+    'file' => 'paver.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/media/paver/%paver_settings_group/edit'] = array(
+    'title' => 'Edit paver settings group',
+    'access arguments' => array('administer paver'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('paver_group_form', 4),
+    'file' => 'paver.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/config/media/paver/%paver_settings_group/delete'] = array(
+    'title' => 'Remove paver settings group',
+    'access arguments' => array('administer paver'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('paver_remove_group_confirm', 4),
+    'file' => 'paver.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function paver_available_data_fields() {
+  return array(
+    'cursorThrottle' => array(
+      'html5_data' => 'data-cursor-throttle',
+    ),
+    'gracefulFailure' => array(
+      'html5_data' => 'data-graceful-failure',
+    ),
+    'failureMessage' => array(
+      'html5_data' => 'data-failure-message',
+    ),
+    'failureMessageInsert' => array(
+      'html5_data' => 'data-failure-message-insert',
+    ),
+    'meta' => array(
+      'html5_data' => 'data-meta',
+    ),
+    'minimumOverflow' => array(
+      'html5_data' => 'data-minimum-overflow',
+    ),
+    'mouseSmoothingFunction' => array(
+      'html5_data' => 'data-mouse-smoothing-function',
+    ),
+    'resizeThrottle' => array(
+      'html5_data' => 'data-resize-throttle',
+    ),
+    'responsive' => array(
+      'html5_data' => 'data-responsive',
+    ),
+    'startPosition' => array(
+      'html5_data' => 'data-start-position',
+    ),
+    'tilt' => array(
+      'html5_data' => 'data-tilt',
+    ),
+    'gyroscopeThrottle' => array(
+      'html5_data' => 'data-gyroscope-throttle',
+    ),
+    'tiltSensitivity' => array(
+      'html5_data' => 'data-tilt-sensitivity',
+    ),
+    'tiltSmoothingFunction' => array(
+      'html5_data' => 'data-tilt-smoothing-function',
+    ),
+    'tiltThresholdLandscape' => array(
+      'html5_data' => 'data-tilt-threshold-landscape',
+    ),
+    'tiltThresholdPortrait' => array(
+      'html5_data' => 'data-tilt-threshold-portrait',
+    ),
+    'tiltScrollerPersistence' => array(
+      'html5_data' => 'data-tilt-scroller-persistence',
+    ),
+  );
+}
+
+/**
+ * Saves a paver settings group (creates or updates one).
+ *
+ * @param object $paver_group
+ *  An object that maps over the paver table.
+ */
+function paver_settings_group_save($paver_group) {
+  if (empty($paver_group->pid)) {
+    $result = drupal_write_record('paver', $paver_group);
+  }
+  else {
+   $result = drupal_write_record('paver', $paver_group, 'pid');
+  }
+  return $result;
+}
+
+/**
+ * Loads a settings group by its pid.
+ *
+ * @param int $pid
+ *  The id of the paver settings group.
+ */
+function paver_settings_group_load($pid) {
+  $query = db_select('paver');
+  $query->fields('paver', array('pid', 'title', 'data'));
+  $query->condition('pid', $pid);
+  $result = $query->execute()->fetch();
+  if (!empty($result)) {
+    $result->data = unserialize($result->data);
+  }
+  return $result;
+}
+
+/**
+ * Removes a settings group by its id.
+ *
+ * @param int $pid
+ *  The id of the paver settings group.
+ */
+function paver_settings_groups_delete($pid) {
+  return db_delete('paver')->condition('pid', $pid)->execute();
+}
+
+/**
+ * Helper function to load all the setting groups.
+ */
+function paver_settings_group_load_all() {
+  $query = db_select('paver');
+  $query->fields('paver', array('pid', 'title', 'data'));
+  $result = $query->execute()->fetchAllAssoc('pid');
+  if (!empty($result)) {
+    foreach ($result as $key => &$value) {
+      $value->data = unserialize($value->data);
+    }
+  }
+  return $result;
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function paver_field_formatter_info() {
+  return array(
+    'paver' => array(
+      'label' => t('Paver'),
+      'field types' => array('image'),
+      'settings' => array('image_style' => '', 'image_link' => '', 'paver_settings_group' => ''),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function paver_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  module_load_include('inc', 'image', 'image.field');
+  $element = image_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state);
+  $paver_setting_groups = paver_settings_group_load_all();
+  $options = array();
+  foreach ($paver_setting_groups as $group) {
+    $options[$group->pid] = $group->title;
+  }
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element['paver_settings_group'] = array(
+    '#type' => 'select',
+    '#title' => t('Paver settings group'),
+    '#options' => $options,
+    '#default_value' => $settings['paver_settings_group'],
+  );
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function paver_field_formatter_settings_summary($field, $instance, $view_mode) {
+  module_load_include('inc', 'image', 'image.field');
+  $summary = image_field_formatter_settings_summary($field, $instance, $view_mode);
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  if (!empty($settings['paver_settings_group'])) {
+    $group = paver_settings_group_load($settings['paver_settings_group']);
+    if (!empty($group)) {
+      $summary_array = array($summary);
+      $summary_array[] = t('Paver settings group: @paver_settings_group', array('@paver_settings_group' => $group->title));
+      $summary = implode('<br />', $summary_array);
+    }
+  }
+  return $summary;
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function paver_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  module_load_include('inc', 'image', 'image.field');
+  $element = image_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display);
+  $group = paver_settings_group_load($display['settings']['paver_settings_group']);
+  if (!empty($group)) {
+    foreach (paver_available_data_fields() as $field_name => $field_meta) {
+      if (isset($group->data[$field_name])) {
+        // These two parameters are a bit special, as they need to be adjusted
+        // before sending them to paver. We choose not to do this at edit time
+        // to provide a better UX.
+        if ($field_name == 'cursorThrottle' || $field_name == 'gyroscopeThrottle') {
+          $group->data[$field_name] = '1000/' . $group->data[$field_name];
+        }
+        $element['#html5_data'][$field_meta['html5_data']] = $group->data[$field_name];
+      }
+    }
+    $element['#additional_classes'] = array('paver-image');
+
+    $element['#attached']['library'][] = array('paver', 'paver');
+  }
+  return $element;
+}
+
+/**
+ * Implements hook_process_field.
+ *
+ * Because the rdf module completely overwrites the item_attributes for each
+ * item in its preprocess hook, we need to use a process hoook to append our
+ * data.
+ */
+function paver_process_field(&$variables) {
+  $element = $variables['element'];
+  if ($element['#field_type'] == 'image' && $element['#formatter'] == 'paver') {
+    if (!empty($element['#html5_data'])) {
+      foreach ($variables['items'] as $delta => $item) {
+        if (empty($variables['item_attributes'][$delta])) {
+          $variables['item_attributes'][$delta] = '';
+        }
+        $variables['item_attributes'][$delta] .= ' ' . drupal_attributes($element['#html5_data']);
+      }
+    }
+
+    if (!empty($element['#additional_classes'])) {
+      if (empty($variables['classes'])) {
+        $variables['classes'] = '';
+      }
+      $variables['classes'] .= ' ' . implode(' ', $element['#additional_classes']);
+    }
+  }
+}
