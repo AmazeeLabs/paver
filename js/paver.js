@@ -4,7 +4,7 @@
    */
   Drupal.behaviors.paver = {
     attach: function(context) {
-      $('.paver-image img', context).parent().paver();
+      $('.paver-image', context).paver();
     }
   };
 
