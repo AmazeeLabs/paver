@@ -43,7 +43,7 @@ function paver_library() {
       $module_path . '/js/paver.js' => array('scope' => 'footer'),
     ),
     'css' => array(
-      $library_path . '/css/paver.min.css' => array(),
+      $library_path . '/css/paver.min.css' => array('scope' => 'header'),
     ),
     'dependencies' => array(
       array('paver', 'jquery_throttle'),
