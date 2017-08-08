@@ -271,22 +271,24 @@ function paver_field_formatter_settings_summary($field, $instance, $view_mode) {
 function paver_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   module_load_include('inc', 'image', 'image.field');
   $element = image_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display);
-  $group = paver_settings_group_load($display['settings']['paver_settings_group']);
-  if (!empty($group)) {
-    foreach (paver_available_data_fields() as $field_name => $field_meta) {
-      if (isset($group->data[$field_name])) {
-        // These two parameters are a bit special, as they need to be adjusted
-        // before sending them to paver. We choose not to do this at edit time
-        // to provide a better UX.
-        if ($field_name == 'cursorThrottle' || $field_name == 'gyroscopeThrottle') {
-          $group->data[$field_name] = '1000/' . $group->data[$field_name];
+  if (!empty($element)) {
+    $group = paver_settings_group_load($display['settings']['paver_settings_group']);
+    if (!empty($group)) {
+      foreach (paver_available_data_fields() as $field_name => $field_meta) {
+        if (isset($group->data[$field_name])) {
+          // These two parameters are a bit special, as they need to be adjusted
+          // before sending them to paver. We choose not to do this at edit time
+          // to provide a better UX.
+          if ($field_name == 'cursorThrottle' || $field_name == 'gyroscopeThrottle') {
+            $group->data[$field_name] = '1000/' . $group->data[$field_name];
+          }
+          $element['#html5_data'][$field_meta['html5_data']] = $group->data[$field_name];
         }
-        $element['#html5_data'][$field_meta['html5_data']] = $group->data[$field_name];
       }
-    }
-    $element['#additional_classes'] = array('paver-image');
+      $element['#additional_classes'] = array('paver-image');
 
-    $element['#attached']['library'][] = array('paver', 'paver');
+      $element['#attached']['library'][] = array('paver', 'paver');
+    }
   }
   return $element;
 }
